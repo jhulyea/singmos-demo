@@ -20,7 +20,7 @@ function getReactionTier(mos) {
 
 const JUDGE_ASSETS = {
   idle: "/memes/haroldwaiting.jpeg",
-  bad: "/memes/haroldbad.jpg",
+  bad: "/memes/haroldbad.jpeg",
   ok: "/memes/haroldok.jpg",
   good: "/memes/haroldgood.jpg",
 };
