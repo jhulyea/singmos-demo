@@ -306,7 +306,7 @@ const FRIEND_POSITIONS = [
   { bottom: "5%", right: "3%"  },
 ];
 
-function ScoreReveal({ score, mos }) {
+function ScoreReveal({ score, mos, onReset }) {
   const label =
     score >= 5 ? "CERTIFIED BANGER 🔥"
     : score >= 4 ? "ACTUALLY FIRE 🎤"
@@ -340,6 +340,9 @@ function ScoreReveal({ score, mos }) {
           {score}<span className="srOf">/5</span>
         </div>
         <div className="srLabel">{label}</div>
+        <button className="srResetBtn" onClick={onReset}>
+          🎤 TRY AGAIN
+        </button>
       </div>
     </div>
   );
@@ -643,6 +646,28 @@ export default function App() {
     if (mr && mr.state === "recording") mr.stop();
   }
 
+  function resetAll() {
+    // stop all audio
+    activeAudioRef.current.forEach((a) => { try { a.pause(); a.currentTime = 0; } catch (_) {} });
+    activeAudioRef.current = [];
+    // stop any recording
+    const mr = recorderRef.current;
+    if (stopTimerRef.current) window.clearTimeout(stopTimerRef.current);
+    if (mr && mr.state === "recording") mr.stop();
+    // reset all state
+    setMos(null);
+    setScore(null);
+    setDispMos(null);
+    setDispScore(null);
+    setLoading(false);
+    setRecording(false);
+    setMsg("drop your clip. we judge.");
+    setErr("");
+    setBoom(false);
+    setRaving(false);
+    setRevealVisible(false);
+  }
+
   const pct = mos == null ? 0 : clamp((mos - 1) / 4, 0, 1) * 100;
 
   return (
@@ -654,7 +679,7 @@ export default function App() {
       {raving && <RaveLights />}
 
       {/* BIG SCORE REVEAL */}
-      {revealVisible && <ScoreReveal score={dispScore} mos={mos} />}
+      {revealVisible && <ScoreReveal score={dispScore} mos={mos} onReset={resetAll} />}
 
       {/* FULLSCREEN FIREWORKS */}
       {boom && <FullscreenFireworks k={boomKey} />}
@@ -1583,6 +1608,32 @@ const css = `
 @keyframes srLabelIn{
   from{ opacity:0; transform:translateY(12px); }
   to  { opacity:1; transform:translateY(0);    }
+}
+
+/* reset button inside reveal */
+.srResetBtn{
+  margin-top: 22px;
+  padding: 14px 36px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.30);
+  background: rgba(0,0,0,0.45);
+  color: rgba(255,255,255,0.95);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  animation: srLabelIn 0.4s ease-out 0.9s both, srResetPulse 1.8s ease-in-out 1.3s infinite;
+  pointer-events: all;
+}
+.srResetBtn:hover{
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.60);
+}
+@keyframes srResetPulse{
+  0%,100%{ box-shadow: 0 0 0px  rgba(255,255,255,0.0);  }
+  50%    { box-shadow: 0 0 28px rgba(255,255,255,0.35); }
 }
 
 /* ===== REVEAL FRIEND PICS ===== */
