@@ -772,42 +772,54 @@ export default function App() {
             <section style={styles.panelCenter}>
               <div style={styles.panelTitleCenter}>THE STAGE</div>
 
-              <button
-                onClick={onPick}
-                disabled={loading || recording}
-                style={styles.megaMicBtn(loading || recording, tier)}
-                title="Upload audio (m4a/mp3/wav/webm)"
-              >
-                <div style={styles.megaMicRing(tier)} />
-                <div style={styles.megaMicSpot} />
+              {!recording ? (
+                <button
+                  onClick={() => startRecording(7)}
+                  disabled={loading}
+                  style={styles.megaMicBtn(loading, tier)}
+                  title="Record 7 seconds then score automatically"
+                >
+                  <div style={styles.megaMicRing(tier)} />
+                  <div style={styles.megaMicSpot} />
 
-                <div style={styles.megaMicIconWrap}>
-                  <GoldMicIcon size={122} />
-                </div>
+                  <div style={styles.megaMicIconWrap}>
+                    <GoldMicIcon size={122} />
+                  </div>
 
-                <div style={styles.megaMicText}>
-                  {loading ? "JUDGING..." : recording ? "RECORDING..." : "TAP TO SING"}
-                </div>
-                <div style={styles.megaMicSub}>click to upload</div>
-              </button>
+                  <div style={styles.megaMicText}>
+                    {loading ? "JUDGING..." : "TAP TO SING"}
+                  </div>
+                  <div style={styles.megaMicSub}>records 7 seconds</div>
+                </button>
+              ) : (
+                <button
+                  onClick={stopRecordingNow}
+                  style={styles.megaMicBtn(false, "cooked")}
+                  title="Stop recording now"
+                >
+                  <div style={styles.megaMicRing("cooked")} />
+                  <div style={styles.megaMicSpot} />
+
+                  <div style={styles.megaMicIconWrap}>
+                    <GoldMicIcon size={122} />
+                  </div>
+
+                  <div style={styles.megaMicText}>RECORDING...</div>
+                  <div style={styles.megaMicSub}>tap to stop early</div>
+                </button>
+              )}
 
               <input ref={fileRef} type="file" accept="audio/*" onChange={onChange} style={{ display: "none" }} />
 
               <div style={styles.controlsRow}>
-                {!recording ? (
-                  <button
-                    onClick={() => startRecording(7)}
-                    disabled={loading}
-                    style={miniBtn}
-                    title="Records 7 seconds then scores automatically"
-                  >
-                    ⏺️ RECORD 7s
-                  </button>
-                ) : (
-                  <button onClick={stopRecordingNow} style={miniBtnDanger}>
-                    ⏹️ STOP
-                  </button>
-                )}
+                <button
+                  onClick={onPick}
+                  disabled={loading || recording}
+                  style={miniBtn}
+                  title="Upload an audio file instead"
+                >
+                  📁 UPLOAD FILE
+                </button>
 
                 <div style={styles.statusPill}>
                   <span style={styles.statusDot(recording, loading)} />
