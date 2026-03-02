@@ -296,6 +296,7 @@ function FullscreenFireworks({ k = 0 }) {
 }
 
 /* =======================
+<<<<<<< HEAD
    RAVE LIGHTS
    ======================= */
 function RaveLights() {
@@ -314,6 +315,8 @@ function RaveLights() {
 }
 
 /* =======================
+=======
+>>>>>>> origin/main
    ORBIT GROUP (reusable)
    ======================= */
 function OrbitGroup({ a, b, dir = "normal", className = "" }) {
@@ -411,6 +414,7 @@ export default function App() {
     let lastFlip = 0;
 
     const tick = (t) => {
+<<<<<<< HEAD
       // Update display ~10× per second for a readable slot-machine flicker
       if (t - lastFlip > 100) {
         lastFlip = t;
@@ -427,6 +431,36 @@ export default function App() {
         tallyMosRef.current = fakeMos;
         setDispScore(fakeScore);
         tallyScoreRef.current = fakeScore;
+=======
+      const p = clamp((t - t0) / dur, 0, 1);
+      // easeOutCubic
+      const e = 1 - Math.pow(1 - p, 3);
+
+      const curMos = startMos + (endMos - startMos) * e;
+      const curScore = startScore + (endScore - startScore) * e;
+
+      setDispMos(curMos);
+      setDispScore(Math.round(curScore));
+
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else {
+        // lock exact values
+        setDispMos(endMos);
+        setDispScore(endScore);
+
+        // FIREWORKS POP
+        setBoomKey((x) => x + 1);
+        setBoom(true);
+        window.setTimeout(() => setBoom(false), 2200);
+
+        // SCORE SOUND
+        const clip = endMos < 2.1
+          ? "/audio/aw-hell-nah-man.mp3"
+          : "/audio/u-got-that-mp3-fix.mp3";
+        const sfx = new Audio(clip);
+        sfx.volume = 0.85;
+        sfx.play().catch(() => {});
+>>>>>>> origin/main
       }
       raf = requestAnimationFrame(tick);
     };
@@ -593,9 +627,12 @@ export default function App() {
       {/* Global CSS animations */}
       <style>{css}</style>
 
+<<<<<<< HEAD
       {/* RAVE LIGHTS (score >= 2.1) */}
       {raving && <RaveLights />}
 
+=======
+>>>>>>> origin/main
       {/* FULLSCREEN FIREWORKS */}
       {boom && <FullscreenFireworks k={boomKey} />}
 
