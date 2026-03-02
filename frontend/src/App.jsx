@@ -215,11 +215,11 @@ function Fireworks({ k = 0 }) {
     const rnd = () => Math.random();
     const colors = ["#ff4d6d", "#ffd166", "#8cff98", "#5eead4", "#7c3aed", "#ffffff"];
     return Array.from({ length: 6 }).map(() => ({
-      x: 12 + rnd() * 76, // percent
-      y: 18 + rnd() * 52, // percent
+      x: 12 + rnd() * 76,
+      y: 18 + rnd() * 52,
       c: colors[Math.floor(rnd() * colors.length)],
-      d: 0.05 + rnd() * 0.25, // delay
-      s: 0.85 + rnd() * 0.55, // scale
+      d: 0.05 + rnd() * 0.25,
+      s: 0.85 + rnd() * 0.55,
     }));
   }, [k]);
 
@@ -239,6 +239,55 @@ function Fireworks({ k = 0 }) {
         >
           {Array.from({ length: 10 }).map((_, j) => (
             <i key={j} className="spark" style={{ "--a": `${j * 36}deg` }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* =======================
+   FULLSCREEN FIREWORKS
+   ======================= */
+function FullscreenFireworks({ k = 0 }) {
+  const bursts = useMemo(() => {
+    const rnd = () => Math.random();
+    const colors = ["#ff4d6d", "#ffd166", "#8cff98", "#5eead4", "#7c3aed", "#ff9f43", "#ffffff", "#a29bfe"];
+    // 3 waves of bursts for a dramatic cascade
+    return Array.from({ length: 22 }).map((_, i) => ({
+      x: 5 + rnd() * 90,
+      y: 5 + rnd() * 75,
+      c: colors[Math.floor(rnd() * colors.length)],
+      d: i * 0.055 + rnd() * 0.12,
+      s: 1.1 + rnd() * 1.2,
+      spokes: 8 + Math.floor(rnd() * 8), // 8-15 spokes
+    }));
+  }, [k]);
+
+  return (
+    <div className="fwFullscreen" aria-hidden="true">
+      {bursts.map((b, i) => (
+        <div
+          key={i}
+          className="burstFull"
+          style={{
+            left: `${b.x}%`,
+            top: `${b.y}%`,
+            "--c": b.c,
+            "--d": `${b.d}s`,
+            "--s": b.s,
+          }}
+        >
+          {Array.from({ length: b.spokes }).map((_, j) => (
+            <i key={j} className="sparkFull" style={{ "--a": `${(j * 360) / b.spokes}deg` }} />
+          ))}
+          {/* inner ring of smaller sparks at offset angle */}
+          {Array.from({ length: b.spokes }).map((_, j) => (
+            <i
+              key={`r${j}`}
+              className="sparkFull sparkSmall"
+              style={{ "--a": `${(j * 360) / b.spokes + 180 / b.spokes}deg` }}
+            />
           ))}
         </div>
       ))}
@@ -346,7 +395,15 @@ export default function App() {
         // FIREWORKS POP
         setBoomKey((x) => x + 1);
         setBoom(true);
-        window.setTimeout(() => setBoom(false), 1100);
+        window.setTimeout(() => setBoom(false), 2200);
+
+        // SCORE SOUND
+        const clip = endMos < 2.1
+          ? "/audio/aw-hell-nah-man.mp3"
+          : "/audio/u-got-that-mp3-fix.mp3";
+        const sfx = new Audio(clip);
+        sfx.volume = 0.85;
+        sfx.play().catch(() => {});
       }
     };
 
@@ -450,6 +507,9 @@ export default function App() {
     <div style={styles.page(tier)}>
       {/* Global CSS animations */}
       <style>{css}</style>
+
+      {/* FULLSCREEN FIREWORKS */}
+      {boom && <FullscreenFireworks k={boomKey} />}
 
       {/* TOP BANNER (TIGHT + LEFT/RIGHT ORBITS) */}
       <header style={styles.bannerWrap}>
@@ -1112,7 +1172,7 @@ const css = `
   box-shadow: 0 0 30px rgba(255,209,102,0.10);
 }
 
-/* fireworks overlay */
+/* fireworks overlay (card-level) */
 .fwWrap{
   position:absolute;
   inset:0;
@@ -1144,6 +1204,48 @@ const css = `
 @keyframes sparkFly{
   0%{ transform: rotate(var(--a)) translateX(0px) scale(0.8); opacity:1; }
   100%{ transform: rotate(var(--a)) translateX(64px) scale(0.2); opacity:0; }
+}
+
+/* fullscreen fireworks overlay */
+.fwFullscreen{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:9999;
+  overflow:hidden;
+}
+.burstFull{
+  position:absolute;
+  transform: translate(-50%,-50%);
+  animation: burstPopFull 1.4s ease-out forwards;
+  animation-delay: var(--d);
+  filter: drop-shadow(0 0 18px var(--c));
+  opacity:0;
+}
+@keyframes burstPopFull{
+  0%{ opacity:0; transform: translate(-50%,-50%) scale(0.2); }
+  8%{ opacity:1; }
+  85%{ opacity:0.85; }
+  100%{ opacity:0; transform: translate(-50%,-50%) scale(calc(var(--s) * 1.4)); }
+}
+.sparkFull{
+  position:absolute;
+  left:0; top:0;
+  width:6px; height:6px;
+  border-radius:999px;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c), 0 0 3px #fff;
+  transform: rotate(var(--a)) translateX(0px);
+  animation: sparkFlyFull 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--d);
+}
+.sparkSmall{
+  width:3px; height:3px;
+}
+@keyframes sparkFlyFull{
+  0%  { transform: rotate(var(--a)) translateX(0px)   scale(1.4); opacity:1; }
+  60% { opacity: 0.9; }
+  100%{ transform: rotate(var(--a)) translateX(160px) scale(0.1); opacity:0; }
 }
 
 /* Optional: if you have .scoreBadge in CSS, it stays. If not, this provides one */
