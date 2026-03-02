@@ -427,34 +427,6 @@ export default function App() {
         tallyMosRef.current = fakeMos;
         setDispScore(fakeScore);
         tallyScoreRef.current = fakeScore;
-      const p = clamp((t - t0) / dur, 0, 1);
-      // easeOutCubic
-      const e = 1 - Math.pow(1 - p, 3);
-
-      const curMos = startMos + (endMos - startMos) * e;
-      const curScore = startScore + (endScore - startScore) * e;
-
-      setDispMos(curMos);
-      setDispScore(Math.round(curScore));
-
-      if (p < 1) raf = requestAnimationFrame(tick);
-      else {
-        // lock exact values
-        setDispMos(endMos);
-        setDispScore(endScore);
-
-        // FIREWORKS POP
-        setBoomKey((x) => x + 1);
-        setBoom(true);
-        window.setTimeout(() => setBoom(false), 2200);
-
-        // SCORE SOUND
-        const clip = endMos < 2.1
-          ? "/audio/aw-hell-nah-man.mp3"
-          : "/audio/u-got-that-mp3-fix.mp3";
-        const sfx = new Audio(clip);
-        sfx.volume = 0.85;
-        sfx.play().catch(() => {});
       }
       raf = requestAnimationFrame(tick);
     };
