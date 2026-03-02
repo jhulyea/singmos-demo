@@ -296,6 +296,24 @@ function FullscreenFireworks({ k = 0 }) {
 }
 
 /* =======================
+   RAVE LIGHTS
+   ======================= */
+function RaveLights() {
+  return (
+    <div className="raveWrap" aria-hidden="true">
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        <div key={i} className={`raveBeam raveBeam${i}`} />
+      ))}
+      <div className="raveFlash" />
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className={`ravePulse ravePulse${i}`} />
+      ))}
+      <div className="raveLaserGrid" />
+    </div>
+  );
+}
+
+/* =======================
    ORBIT GROUP (reusable)
    ======================= */
 function OrbitGroup({ a, b, dir = "normal", className = "" }) {
@@ -317,6 +335,11 @@ export default function App() {
   const chunksRef = useRef([]);
   const stopTimerRef = useRef(null);
 
+  // Audio + tally refs
+  const activeAudioRef = useRef([]);  // all playing Audio objects, so we can nuke them on re-run
+  const tallyMosRef = useRef(0);      // tracks current slot-machine mos value for snap start
+  const tallyScoreRef = useRef(0);
+
   const [mos, setMos] = useState(null);
   const [score, setScore] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -331,6 +354,9 @@ export default function App() {
   // fireworks trigger
   const [boom, setBoom] = useState(false);
   const [boomKey, setBoomKey] = useState(0);
+
+  // rave lights (score >= 2.1)
+  const [raving, setRaving] = useState(false);
 
   const tier = useMemo(() => {
     if (mos == null) return "idle";
@@ -355,7 +381,7 @@ export default function App() {
     return { who: "DAP GOT TALENT 🎤", vibe: "drop your clip. we judge." };
   }, [tier]);
 
-  // Animate MOS + score tally up, then pop fireworks
+  // Animate MOS + score tally, then pop fireworks after audio finishes
   useEffect(() => {
     if (mos == null && score == null) {
       setDispMos(null);
@@ -363,52 +389,111 @@ export default function App() {
       return;
     }
 
-    const startMos = Number.isFinite(Number(dispMos)) ? Number(dispMos) : mos ?? 0;
-    const startScore = Number.isFinite(Number(dispScore)) ? Number(dispScore) : score ?? 0;
+    const endMos = mos;
+    const endScore = score;
 
-    const endMos = mos ?? startMos;
-    const endScore = score ?? startScore;
-
-    const dur = 700; // ms
-    const t0 = performance.now();
-    let raf = 0;
+    // Kill ALL previously playing audio immediately
+    activeAudioRef.current.forEach((a) => { try { a.pause(); a.currentTime = 0; } catch (_) {} });
+    activeAudioRef.current = [];
 
     setBoom(false);
+    setRaving(false);
+
+    // SUSPENSE MUSIC
+    const wheel = new Audio("/audio/spin-the-wheel-edm.mp3");
+    wheel.volume = 0.75;
+    activeAudioRef.current.push(wheel);
+    wheel.play().catch(() => {});
+
+    // SLOT-MACHINE ANIMATION — numbers spin visibly while audio plays
+    let raf = 0;
+    const t0 = performance.now();
+    let lastFlip = 0;
 
     const tick = (t) => {
-      const p = clamp((t - t0) / dur, 0, 1);
-      // easeOutCubic
-      const e = 1 - Math.pow(1 - p, 3);
-
-      const curMos = startMos + (endMos - startMos) * e;
-      const curScore = startScore + (endScore - startScore) * e;
-
-      setDispMos(curMos);
-      setDispScore(Math.round(curScore));
-
-      if (p < 1) raf = requestAnimationFrame(tick);
-      else {
-        // lock exact values
-        setDispMos(endMos);
-        setDispScore(endScore);
-
-        // FIREWORKS POP
-        setBoomKey((x) => x + 1);
-        setBoom(true);
-        window.setTimeout(() => setBoom(false), 2200);
-
-        // SCORE SOUND
-        const clip = endMos < 2.1
-          ? "/audio/aw-hell-nah-man.mp3"
-          : "/audio/u-got-that-mp3-fix.mp3";
-        const sfx = new Audio(clip);
-        sfx.volume = 0.85;
-        sfx.play().catch(() => {});
+      // Update display ~10× per second for a readable slot-machine flicker
+      if (t - lastFlip > 100) {
+        lastFlip = t;
+        const elapsed = (t - t0) / 1000;
+        // Triangle wave 1 → 5 → 1 cycling at ~1.4 Hz, plus a little jitter
+        const cycle = (elapsed * 1.4) % 2;
+        const wave = cycle < 1 ? cycle : 2 - cycle;
+        const fakeMos = clamp(
+          parseFloat((1 + wave * 4 + (Math.random() - 0.5) * 0.5).toFixed(2)),
+          1.0, 5.0
+        );
+        const fakeScore = clamp(Math.round(1 + wave * 4 + (Math.random() - 0.5) * 0.8), 1, 5);
+        setDispMos(fakeMos);
+        tallyMosRef.current = fakeMos;
+        setDispScore(fakeScore);
+        tallyScoreRef.current = fakeScore;
       }
+      raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+
+    // REVEAL — fires at the halfway point of the audio (or on ended as fallback)
+    let revealed = false;
+    const onReveal = () => {
+      if (revealed) return;
+      revealed = true;
+      wheel.pause();
+      cancelAnimationFrame(raf);
+
+      const fromMos = tallyMosRef.current;
+      const fromScore = tallyScoreRef.current;
+      const snapDur = 600;
+      const snapT0 = performance.now();
+
+      const snap = (t) => {
+        const p = clamp((t - snapT0) / snapDur, 0, 1);
+        const e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        setDispMos(fromMos + (endMos - fromMos) * e);
+        setDispScore(Math.round(fromScore + (endScore - fromScore) * e));
+        if (p < 1) {
+          requestAnimationFrame(snap);
+        } else {
+          setDispMos(endMos);
+          setDispScore(endScore);
+
+          // FIREWORKS
+          setBoomKey((x) => x + 1);
+          setBoom(true);
+          window.setTimeout(() => setBoom(false), 2200);
+
+          // RAVE LIGHTS
+          if (endMos >= 2.1) setRaving(true);
+
+          // SCORE SOUND
+          const clip = endMos < 2.1
+            ? "/audio/aw-hell-nah-man.mp3"
+            : "/audio/u-got-that-mp3-fix.mp3";
+          const sfx = new Audio(clip);
+          sfx.volume = 0.85;
+          activeAudioRef.current.push(sfx);
+          sfx.play().catch(() => {});
+        }
+      };
+      requestAnimationFrame(snap);
+    };
+
+    // Trigger reveal at the halfway point
+    const onTimeUpdate = () => {
+      if (wheel.duration && wheel.currentTime >= wheel.duration / 2) {
+        onReveal();
+      }
+    };
+
+    wheel.addEventListener("timeupdate", onTimeUpdate);
+    wheel.addEventListener("ended", onReveal); // fallback if track is very short
+
+    return () => {
+      cancelAnimationFrame(raf);
+      wheel.removeEventListener("timeupdate", onTimeUpdate);
+      wheel.removeEventListener("ended", onReveal);
+      wheel.pause();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mos, score]);
 
@@ -507,6 +592,9 @@ export default function App() {
     <div style={styles.page(tier)}>
       {/* Global CSS animations */}
       <style>{css}</style>
+
+      {/* RAVE LIGHTS (score >= 2.1) */}
+      {raving && <RaveLights />}
 
       {/* FULLSCREEN FIREWORKS */}
       {boom && <FullscreenFireworks k={boomKey} />}
@@ -1260,6 +1348,92 @@ const css = `
   backdrop-filter: blur(10px);
   font-weight: 1000;
   letter-spacing: 0.08em;
+}
+
+/* ===== RAVE LIGHTS ===== */
+.raveWrap{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:200;
+  overflow:hidden;
+  mix-blend-mode:screen;
+}
+
+/* Sweeping beams — all share same base, each overrides color + sweep */
+.raveBeam{
+  position:absolute;
+  top:-5px;
+  left:50%;
+  margin-left:-280px;
+  width:560px;
+  height:115vh;
+  transform-origin:50% 0%;
+  clip-path:polygon(48% 0%, 52% 0%, 100% 100%, 0% 100%);
+}
+.raveBeam1{ background:linear-gradient(180deg,rgba(255,77,109,0.65) 0%,transparent 82%);  animation:rSweep1 1.10s ease-in-out infinite alternate; }
+.raveBeam2{ background:linear-gradient(180deg,rgba(94,234,212,0.60) 0%,transparent 82%);  animation:rSweep2 0.80s ease-in-out infinite alternate; }
+.raveBeam3{ background:linear-gradient(180deg,rgba(255,209,102,0.58) 0%,transparent 82%); animation:rSweep3 1.40s ease-in-out infinite alternate; }
+.raveBeam4{ background:linear-gradient(180deg,rgba(124,58,237,0.65) 0%,transparent 82%);  animation:rSweep4 0.65s ease-in-out infinite alternate; }
+.raveBeam5{ background:linear-gradient(180deg,rgba(140,255,152,0.55) 0%,transparent 82%); animation:rSweep5 1.20s ease-in-out infinite alternate; }
+.raveBeam6{ background:linear-gradient(180deg,rgba(96,165,250,0.60) 0%,transparent 82%);  animation:rSweep6 0.90s ease-in-out infinite alternate; }
+.raveBeam7{ background:linear-gradient(180deg,rgba(255,255,255,0.35) 0%,transparent 70%); animation:rSweep7 0.50s ease-in-out infinite alternate; }
+.raveBeam8{ background:linear-gradient(180deg,rgba(255,153,51,0.55) 0%,transparent 82%);  animation:rSweep8 1.55s ease-in-out infinite alternate; }
+
+@keyframes rSweep1{ from{transform:rotate(-52deg)} to{transform:rotate(42deg)} }
+@keyframes rSweep2{ from{transform:rotate(-68deg)} to{transform:rotate(18deg)} }
+@keyframes rSweep3{ from{transform:rotate(8deg)}   to{transform:rotate(68deg)} }
+@keyframes rSweep4{ from{transform:rotate(-78deg)} to{transform:rotate(-8deg)} }
+@keyframes rSweep5{ from{transform:rotate(-38deg)} to{transform:rotate(58deg)} }
+@keyframes rSweep6{ from{transform:rotate(-22deg)} to{transform:rotate(72deg)} }
+@keyframes rSweep7{ from{transform:rotate(-62deg)} to{transform:rotate(62deg)} }
+@keyframes rSweep8{ from{transform:rotate(20deg)}  to{transform:rotate(80deg)} }
+
+/* Rapid colour strobe — very low opacity so it's felt not seen */
+.raveFlash{
+  position:absolute;
+  inset:0;
+  animation:rFlicker 0.22s steps(1) infinite;
+}
+@keyframes rFlicker{
+  0%  { background:rgba(255,77,109,0.08);  }
+  14% { background:rgba(94,234,212,0.09);  }
+  28% { background:rgba(255,209,102,0.08); }
+  42% { background:rgba(124,58,237,0.09);  }
+  57% { background:rgba(140,255,152,0.08); }
+  71% { background:rgba(96,165,250,0.09);  }
+  85% { background:rgba(255,255,255,0.05); }
+ 100% { background:rgba(255,77,109,0.08);  }
+}
+
+/* Corner + edge glow orbs */
+.ravePulse{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(80px);
+}
+.ravePulse1{ width:700px;height:700px; top:-220px; left:-180px;  background:rgba(255,77,109,0.22);  animation:rPulse 0.58s ease-in-out infinite alternate; }
+.ravePulse2{ width:700px;height:700px; top:-220px; right:-180px; background:rgba(94,234,212,0.20);  animation:rPulse 0.73s ease-in-out infinite alternate; animation-delay:-0.28s; }
+.ravePulse3{ width:550px;height:550px; bottom:-140px;left:-120px; background:rgba(124,58,237,0.20); animation:rPulse 0.48s ease-in-out infinite alternate; animation-delay:-0.14s; }
+.ravePulse4{ width:550px;height:550px; bottom:-140px;right:-120px;background:rgba(255,209,102,0.18);animation:rPulse 0.62s ease-in-out infinite alternate; animation-delay:-0.42s; }
+@keyframes rPulse{
+  from{ opacity:0.30; transform:scale(0.86); }
+  to  { opacity:1.00; transform:scale(1.14); }
+}
+
+/* Laser grid overlay */
+.raveLaserGrid{
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(94,234,212,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,234,212,0.07) 1px, transparent 1px);
+  background-size:65px 65px;
+  animation:rGrid 0.38s ease-in-out infinite alternate;
+}
+@keyframes rGrid{
+  from{ opacity:0.20; }
+  to  { opacity:0.85; }
 }
 
 /* (optional) disco layer if you referenced it */
