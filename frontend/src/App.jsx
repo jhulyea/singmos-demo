@@ -296,6 +296,55 @@ function FullscreenFireworks({ k = 0 }) {
 }
 
 /* =======================
+   BIG SCORE REVEAL
+   ======================= */
+const FRIEND_POSITIONS = [
+  { top: "5%",    left:  "3%"  },
+  { top: "4%",    right: "3%"  },
+  { bottom: "6%", left:  "3%"  },
+  { bottom: "5%", right: "3%"  },
+];
+
+function ScoreReveal({ score, mos }) {
+  const label =
+    score >= 5 ? "CERTIFIED BANGER 🔥"
+    : score >= 4 ? "ACTUALLY FIRE 🎤"
+    : score >= 3 ? "NOT BAD SIA 👏"
+    : score >= 2 ? "CAN IMPROVE LA 😬"
+    : "BRUH 💀";
+
+  return (
+    <div className="srOverlay" aria-live="assertive">
+      <div className="srBurst" />
+
+      {/* Friends scattered in the four corners */}
+      {FRIENDS.map((f, i) => (
+        <img
+          key={f.alt}
+          src={f.src}
+          alt={f.alt}
+          draggable="false"
+          className="srFriend"
+          style={{
+            position: "absolute",
+            ...FRIEND_POSITIONS[i],
+            "--fd": `${i * 0.08}s`,
+            "--jd": `${i * 0.22}s`,
+          }}
+        />
+      ))}
+
+      <div className="srWrap">
+        <div className="srScore">
+          {score}<span className="srOf">/5</span>
+        </div>
+        <div className="srLabel">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+/* =======================
    RAVE LIGHTS
    ======================= */
 function RaveLights() {
@@ -358,6 +407,9 @@ export default function App() {
   // rave lights (score >= 2.1)
   const [raving, setRaving] = useState(false);
 
+  // big centre score reveal
+  const [revealVisible, setRevealVisible] = useState(false);
+
   const tier = useMemo(() => {
     if (mos == null) return "idle";
     return tierFromMos(mos);
@@ -398,6 +450,7 @@ export default function App() {
 
     setBoom(false);
     setRaving(false);
+    setRevealVisible(false);
 
     // SUSPENSE MUSIC
     const wheel = new Audio("/audio/spin-the-wheel-edm.mp3");
@@ -464,6 +517,9 @@ export default function App() {
 
           // RAVE LIGHTS
           if (endMos >= 2.1) setRaving(true);
+
+          // BIG SCORE REVEAL
+          setRevealVisible(true);
 
           // SCORE SOUND
           const clip = endMos < 2.1
@@ -595,6 +651,9 @@ export default function App() {
 
       {/* RAVE LIGHTS (score >= 2.1) */}
       {raving && <RaveLights />}
+
+      {/* BIG SCORE REVEAL */}
+      {revealVisible && <ScoreReveal score={dispScore} mos={mos} />}
 
       {/* FULLSCREEN FIREWORKS */}
       {boom && <FullscreenFireworks k={boomKey} />}
@@ -1434,6 +1493,127 @@ const css = `
 @keyframes rGrid{
   from{ opacity:0.20; }
   to  { opacity:0.85; }
+}
+
+/* ===== BIG SCORE REVEAL ===== */
+.srOverlay{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  z-index:8000;
+}
+
+/* radial colour burst behind the number */
+.srBurst{
+  position:absolute;
+  inset:0;
+  animation:srBurstAnim 3.5s ease-out forwards;
+}
+@keyframes srBurstAnim{
+  0%  { background:radial-gradient(0px   at 50% 50%,rgba(255,77,109,0.00),transparent 70%); }
+  12% { background:radial-gradient(600px at 50% 50%,rgba(255,77,109,0.45),transparent 70%); }
+  28% { background:radial-gradient(700px at 50% 50%,rgba(255,209,102,0.38),transparent 70%); }
+  45% { background:radial-gradient(650px at 50% 50%,rgba(94,234,212,0.32),transparent 70%); }
+  62% { background:radial-gradient(600px at 50% 50%,rgba(124,58,237,0.28),transparent 70%); }
+  80% { background:radial-gradient(500px at 50% 50%,rgba(140,255,152,0.20),transparent 70%); }
+ 100% { background:radial-gradient(300px at 50% 50%,rgba(255,77,109,0.00),transparent 70%); }
+}
+
+/* wrapper: grow in, then hold forever */
+.srWrap{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  animation: srGrow 0.70s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes srGrow{
+  from{ transform:scale(0.04); opacity:0; }
+  to  { transform:scale(1);    opacity:1; }
+}
+
+/* the number itself */
+.srScore{
+  font-size:clamp(110px,26vw,310px);
+  font-weight:1000;
+  line-height:1;
+  letter-spacing:-0.02em;
+  animation:srColorCycle 0.32s steps(1) infinite;
+  filter:drop-shadow(0 0 50px currentColor) drop-shadow(0 0 100px currentColor);
+}
+.srOf{
+  font-size:0.32em;
+  letter-spacing:0;
+  opacity:0.85;
+}
+@keyframes srColorCycle{
+  0%  { color:#ff4d6d; }
+  16% { color:#ffd166; }
+  33% { color:#8cff98; }
+  50% { color:#5eead4; }
+  66% { color:#7c3aed; }
+  83% { color:#60a5fa; }
+ 100% { color:#ff4d6d; }
+}
+
+/* verdict label fades in below */
+.srLabel{
+  font-size:clamp(16px,2.8vw,34px);
+  font-weight:900;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.95);
+  text-shadow:0 0 28px rgba(255,255,255,0.55);
+  animation:srLabelIn 0.4s ease-out 0.55s both;
+}
+@keyframes srLabelIn{
+  from{ opacity:0; transform:translateY(12px); }
+  to  { opacity:1; transform:translateY(0);    }
+}
+
+/* ===== REVEAL FRIEND PICS ===== */
+.srFriend{
+  width: clamp(130px, 16vw, 220px);
+  height: clamp(130px, 16vw, 220px);
+  object-fit: cover;
+  border-radius: 999px;
+  border: 5px solid transparent;
+  /* pop in with spring, staggered by --fd */
+  animation:
+    srFriendPop     0.60s cubic-bezier(0.34,1.56,0.64,1) var(--fd) both,
+    srFriendRainbow 0.40s steps(1) infinite             var(--fd),
+    srFriendJiggle  1.80s ease-in-out                   var(--jd) infinite;
+  transform-origin: center bottom;
+  z-index: 1;
+}
+
+/* spring pop-in */
+@keyframes srFriendPop{
+  from{ transform:scale(0.05) rotate(-10deg); opacity:0; }
+  to  { transform:scale(1)    rotate(0deg);   opacity:1; }
+}
+
+/* rainbow border + glow cycling */
+@keyframes srFriendRainbow{
+  0%  { border-color:#ff4d6d; box-shadow:0 0 28px rgba(255,77,109,0.85), 0 0 60px rgba(255,77,109,0.40); }
+  16% { border-color:#ffd166; box-shadow:0 0 28px rgba(255,209,102,0.85),0 0 60px rgba(255,209,102,0.40); }
+  33% { border-color:#8cff98; box-shadow:0 0 28px rgba(140,255,152,0.85),0 0 60px rgba(140,255,152,0.40); }
+  50% { border-color:#5eead4; box-shadow:0 0 28px rgba(94,234,212,0.85), 0 0 60px rgba(94,234,212,0.40); }
+  66% { border-color:#7c3aed; box-shadow:0 0 28px rgba(124,58,237,0.85), 0 0 60px rgba(124,58,237,0.40); }
+  83% { border-color:#60a5fa; box-shadow:0 0 28px rgba(96,165,250,0.85), 0 0 60px rgba(96,165,250,0.40); }
+ 100% { border-color:#ff4d6d; box-shadow:0 0 28px rgba(255,77,109,0.85), 0 0 60px rgba(255,77,109,0.40); }
+}
+
+/* subtle jiggle to feel alive */
+@keyframes srFriendJiggle{
+  0%,100%{ transform:rotate(-4deg) scale(1.00); }
+  25%    { transform:rotate( 4deg) scale(1.05); }
+  50%    { transform:rotate(-2deg) scale(0.97); }
+  75%    { transform:rotate( 3deg) scale(1.03); }
 }
 
 /* (optional) disco layer if you referenced it */
