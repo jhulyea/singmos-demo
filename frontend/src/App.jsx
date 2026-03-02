@@ -145,6 +145,7 @@ function CurvedRainbowTitle({ text = "DAP GOT TALENT" }) {
       width="min(920px, 90vw)"
       height="100"
       aria-label={text}
+      className="titlePulse"
       style={{ display: "block", margin: "0 auto" }}
     >
       <defs>
@@ -1247,6 +1248,15 @@ const css = `
 @keyframes spin { 
   from { transform: rotate(0deg); } 
   to { transform: rotate(360deg); } 
+}
+
+.titlePulse{
+  animation: titleBreath 2.2s ease-in-out infinite;
+  transform-origin: center center;
+}
+@keyframes titleBreath{
+  0%,100%{ transform: scale(1);    }
+  50%    { transform: scale(2); }
 }
 
 /* ===== FRIEND ORBIT ===== */
