@@ -466,7 +466,7 @@ export default function App() {
       const fd = new FormData();
       fd.append("audio", file);
 
-      const res = await fetch("https://minnong-singmos-backend.hf.space/score", {
+      const res = await fetch("https://minnong-singing-scorer-backend.hf.space/score", {
         method: "POST",
         body: fd,
       });
