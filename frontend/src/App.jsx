@@ -466,7 +466,7 @@ export default function App() {
       const fd = new FormData();
       fd.append("audio", file);
 
-      const res = await fetch("http://127.0.0.1:5050/score", {
+      const res = await fetch("http://singing-scorer.up.railway.app:5050/score", {
         method: "POST",
         body: fd,
       });
