@@ -1,4 +1,4 @@
-# Pitch Perfect
+# 🎤 Pitch Perfect - Singing Scorer
 
 **Live demo: [pitchperfect.minn.codes](https://pitchperfect.minn.codes/)**
 
